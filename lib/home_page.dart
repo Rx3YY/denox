@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
+import 'dart:io';
 
 class HomePage extends StatefulWidget {
   final TextEditingController backendIpController;
@@ -20,9 +21,6 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _fetchWeather();
-    Timer.periodic(const Duration(seconds: 5), (timer) {
-      _checkForReminders();
-    });
   }
 
   Future<void> _fetchWeather() async {
@@ -55,7 +53,7 @@ class _HomePageState extends State<HomePage> {
       _showRecommendationDialog(recommendedCanteen);
     } else {
       setState(() {
-        _recommendation = 'Failed to load recommendation';
+        _recommendation = '加载推荐失败';
       });
     }
   }
@@ -73,14 +71,14 @@ class _HomePageState extends State<HomePage> {
                 _postChoice(1, recommendedCanteen);
                 Navigator.of(context).pop();
               },
-              child: const Text('Canteen 1'),
+              child: const Text('餐厅1'),
             ),
             TextButton(
               onPressed: () {
                 _postChoice(2, recommendedCanteen);
                 Navigator.of(context).pop();
               },
-              child: const Text('Canteen 2'),
+              child: const Text('餐厅2'),
             ),
           ],
         );
@@ -131,60 +129,15 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<void> _checkForReminders() async {
-    final response = await http.get(Uri.parse('http://${widget.backendIpController.text}:8000/remind'));
-    // final response = await http.get(Uri.parse('http://10.122.227.179:8000/remind'));
+
+
+  Future<bool> _isOnline() async {
+    final response = await http.get(Uri.parse('http://${widget.backendIpController.text}:8000/status'));
     if (response.statusCode == 200) {
-      String reminder = json.decode(response.body)['reminder'];
-      if (reminder.isNotEmpty) {
-        _showReminderDialog(reminder);
-      }
+      String status = json.decode(response.body)['status'];
+      return status == 'ONLINE';
     }
-  }
-
-  void _showReminderDialog(String reminder) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Reminder'),
-          content: Text(reminder),
-          actions: [
-            TextButton(
-              onPressed: () {
-                _postReminderChoice('delay');
-                Navigator.of(context).pop();
-              },
-              child: const Text('Later'),
-            ),
-            TextButton(
-              onPressed: () {
-                _postReminderChoice('on-time');
-                Navigator.of(context).pop();
-              },
-              child: const Text('Okay'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _postReminderChoice(String choice) async {
-    final response = await http.post(
-      // Uri.parse('http://10.122.227.179:8000/log_choice'),
-      Uri.parse('http://${widget.backendIpController.text}:8000/log_choice'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'reminder_time': DateTime.now().toIso8601String(),
-        'choice': choice,
-      }),
-    );
-    if (response.statusCode != 200) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to log choice')),
-      );
-    }
+    return true;
   }
 
   @override

@@ -1,15 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'home_page.dart';
 import 'assistant_page.dart';
 import 'timetable_page.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:async';
 
-void main() => runApp(MyApp());
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+  FlutterLocalNotificationsPlugin();
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  const AndroidInitializationSettings initializationSettingsAndroid =
+  AndroidInitializationSettings('app_icon');
+  final InitializationSettings initializationSettings =
+  InitializationSettings(android: initializationSettingsAndroid);
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  runApp(MyApp());
+}
 
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Reminder App',
+      title: '梦启时',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -33,8 +48,16 @@ class _MainPageState extends State<MainPage> {
   late List<Widget> _widgetOptions = <Widget>[
     HomePage(backendIpController: backendIpController),
     AssistantPage(messages: messages, chatHistory: chatHistory, proxyController: proxyController),
-    TimetablePage(),
+    TimetablePage(backendIpController: backendIpController),
   ];
+
+  @override
+  void initState(){
+    super.initState();
+    Timer.periodic(const Duration(seconds: 5), (timer) {
+      _checkForReminders();
+    });
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -42,7 +65,28 @@ class _MainPageState extends State<MainPage> {
     });
   }
 
+  Future<void> _updateReminderTime(String startTime, String endTime) async {
+    final response = await http.post(
+      Uri.parse('http://${backendIpController.text}:8000/update_time'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'start_time': startTime, 'end_time': endTime}),
+    );
+
+    if (response.statusCode != 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('提交失败')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('成功提交')),
+      );
+    }
+  }
+
   void _showSettingsDialog() {
+    final TextEditingController startTimeController = TextEditingController(text: '00:00:00');
+    final TextEditingController endTimeController = TextEditingController(text: '01:00:00');
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -63,6 +107,18 @@ class _MainPageState extends State<MainPage> {
                   labelText: '后端IP地址',
                 ),
               ),
+              TextField(
+                controller: startTimeController,
+                decoration: InputDecoration(
+                  labelText: '提醒开始时间 (HH:mm:ss)',
+                ),
+              ),
+              TextField(
+                controller: endTimeController,
+                decoration: InputDecoration(
+                  labelText: '提醒结束时间 (HH:mm:ss)',
+                ),
+              ),
             ],
           ),
           actions: <Widget>[
@@ -73,8 +129,9 @@ class _MainPageState extends State<MainPage> {
               },
             ),
             TextButton(
-              child: Text('保存'),
+              child: Text('确定'),
               onPressed: () {
+                _updateReminderTime(startTimeController.text, endTimeController.text);
                 Navigator.of(context).pop();
               },
             ),
@@ -84,11 +141,67 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
+  Future<void> _checkForReminders() async {
+    final response = await http.get(Uri.parse('http://${backendIpController.text}:8000/remind'));
+    // final response = await http.get(Uri.parse('http://10.122.227.179:8000/remind'));
+    if (response.statusCode == 200) {
+      String reminder = json.decode(response.body)['reminder'];
+      if (reminder.isNotEmpty) {
+        _showReminderDialog(reminder);
+      }
+    }
+  }
+
+  void _showReminderDialog(String reminder) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Reminder'),
+          content: Text(reminder),
+          actions: [
+            TextButton(
+              onPressed: () {
+                _postReminderChoice('delay');
+                Navigator.of(context).pop();
+              },
+              child: const Text('等会'),
+            ),
+            TextButton(
+              onPressed: () {
+                _postReminderChoice('on-time');
+                Navigator.of(context).pop();
+              },
+              child: const Text('好的'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
+  Future<void> _postReminderChoice(String choice) async {
+    final response = await http.post(
+      Uri.parse('http://${backendIpController.text}:8000/log_choice'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        'reminder_time': DateTime.now().toIso8601String(),
+        'choice': choice,
+      }),
+    );
+    if (response.statusCode != 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to log choice')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Reminder App'),
+        title: Text('梦启时'),
         actions: [
           IconButton(
             icon: Icon(Icons.settings),
