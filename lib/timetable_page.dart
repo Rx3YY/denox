@@ -3,6 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+/* test timetable
+周一,3-5节毛概,6-8节数字信号处理,9-11节电磁场与电磁波
+周二,3-5节概率论,6-7节项目管理与经济决策
+周三,3-4节写作与表达
+周四,3-5节程序设计
+周五,8-9节体育
+ */
+
 class TimetablePage extends StatefulWidget {
   final TextEditingController backendIpController;
 
@@ -25,7 +33,20 @@ class PageState extends State<TimetablePage> {
     Colors.cyan,
     Colors.amber,
     Colors.deepPurpleAccent,
-    Colors.purpleAccent
+    Colors.purpleAccent,
+    Colors.green,
+    Colors.orange,
+    Colors.teal,
+    Colors.pink,
+    Colors.deepOrange,
+    Colors.indigo,
+    Colors.lime,
+    Colors.blueGrey,
+    Colors.yellow,
+    Colors.brown,
+    Colors.blue,
+    Colors.deepPurple,
+    Colors.lightGreen,
   ];
 
   var weekList = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
@@ -86,7 +107,7 @@ class PageState extends State<TimetablePage> {
     }
     List<String> days = timetableStr.split('\n');
     for (String day in days) {
-      if(day.isEmpty) continue;
+      if (day.isEmpty) continue;
       List<String> lessons = day.split(',');
       if (lessons.isEmpty) continue;
       int dayIndex = _matchWeekday(lessons[0]);
@@ -190,7 +211,7 @@ class PageState extends State<TimetablePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Timetable'),
+        title: Text('我的课程表'),
         actions: [
           IconButton(
             icon: Icon(Icons.content_paste),
@@ -307,46 +328,64 @@ class PageState extends State<TimetablePage> {
                       itemBuilder: (BuildContext context, int index) {
                         int day = index % 7;
                         int time = index ~/ 7;
+
+                        // Skip the cell if it is part of a merged cell
                         if (_isMerged[day][time]) {
-                          return Container();
+                          int time1 = time - 1;
+                          while(_isMerged[day][time1]){
+                            time1--;
+                          }
+                          return Container(
+                              decoration: BoxDecoration(
+                                color: colorList[(day+time1*5) % colorList.length],
+                                border:
+                                Border.all(color: Colors.black12, width: 0.5),
+                              )
+                          );
                         }
+
+                        // Determine the span of the current cell
                         int span = 1;
                         while (time + span < 14 &&
                             _timetable[day][time + span] ==
-                                _timetable[day][time] &&
-                            _isMerged[day][time + span]) {
+                                _timetable[day][time]) {
                           span++;
                         }
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: _timetable[day][time].isEmpty
-                                ? Colors.white
-                                : colorList[day % colorList.length],
-                            border:
-                                Border.all(color: Colors.black12, width: 0.5),
-                          ),
-                          child: Center(
-                            child: TextField(
-                              textAlign: TextAlign.center,
-                              decoration: InputDecoration(
-                                border: InputBorder.none,
-                                contentPadding:
-                                    EdgeInsets.symmetric(vertical: 16.0),
+
+                        return GridTile(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: _timetable[day][time].isEmpty
+                                  ? Colors.white
+                                  : colorList[(day+time*5) % colorList.length],
+                              border:
+                                  Border.all(color: Colors.black12, width: 0.5),
+                            ),
+                            child: Center(
+                              child: TextField(
+                                maxLines: null,
+                                minLines: 1,
+                                textAlign: TextAlign.center,
+                                decoration: InputDecoration(
+                                  border: InputBorder.none,
+                                  contentPadding:
+                                      EdgeInsets.symmetric(vertical: 16.0),
+                                ),
+                                controller: TextEditingController(
+                                  text: _timetable[day][time],
+                                ),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _timetable[day][time] = value;
+                                  });
+                                },
                               ),
-                              controller: TextEditingController(
-                                  text: _timetable[day][time]),
-                              onChanged: (value) {
-                                setState(() {
-                                  _timetable[day][time] = value;
-                                });
-                              },
                             ),
                           ),
-                          height: 50.0 * span,
                         );
                       },
                     ),
-                  ),
+                  )
                 ],
               ),
             ),

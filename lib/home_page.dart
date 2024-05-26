@@ -121,7 +121,7 @@ class _HomePageState extends State<HomePage> {
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: const Text('Cancel'),
+              child: const Text('好的'),
             ),
           ],
         );

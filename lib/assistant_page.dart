@@ -93,7 +93,7 @@ class _AssistantPageState extends State<AssistantPage> with AutomaticKeepAliveCl
         Uri.parse('https://api.openai.com/v1/chat/completions'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer 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',
+          'Authorization': 'Bearer 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',
           'Accept-Charset': 'utf-8',
         },
         body: utf8.encode(json.encode({
