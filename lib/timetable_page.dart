@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:io';
 
 /* test timetable
 周一,3-5节毛概,6-8节数字信号处理,9-11节电磁场与电磁波
@@ -27,27 +28,28 @@ class PageState extends State<TimetablePage> {
       List.generate(7, (_) => List.filled(14, false));
 
   var colorList = [
-    Colors.red,
-    Colors.lightBlueAccent,
-    Colors.grey,
-    Colors.cyan,
-    Colors.amber,
-    Colors.deepPurpleAccent,
-    Colors.purpleAccent,
-    Colors.green,
-    Colors.orange,
-    Colors.teal,
-    Colors.pink,
-    Colors.deepOrange,
-    Colors.indigo,
-    Colors.lime,
-    Colors.blueGrey,
-    Colors.yellow,
-    Colors.brown,
-    Colors.blue,
-    Colors.deepPurple,
-    Colors.lightGreen,
+    Colors.red.shade200,
+    Colors.lightBlueAccent.shade100,
+    Colors.grey.shade300,
+    Colors.cyan.shade200,
+    Colors.amber.shade200,
+    Colors.deepPurpleAccent.shade100,
+    Colors.purpleAccent.shade100,
+    Colors.green.shade200,
+    Colors.orange.shade200,
+    Colors.teal.shade200,
+    Colors.pink.shade100,
+    Colors.deepOrange.shade200,
+    Colors.indigo.shade100,
+    Colors.lime.shade200,
+    Colors.blueGrey.shade200,
+    Colors.yellow.shade200,
+    Colors.brown.shade200,
+    Colors.blue.shade200,
+    Colors.deepPurple.shade200,
+    Colors.lightGreen.shade200,
   ];
+
 
   var weekList = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
   var timeList = [
@@ -69,6 +71,9 @@ class PageState extends State<TimetablePage> {
 
   var dateList = [];
   var currentWeekIndex = 0;
+
+  final tileRatio = Platform.isIOS || Platform.isAndroid ? 1/2 : 2/1;
+  final fontSize = Platform.isIOS || Platform.isAndroid ? 12.0 : 16.0;
 
   @override
   void initState() {
@@ -112,7 +117,7 @@ class PageState extends State<TimetablePage> {
       if (lessons.isEmpty) continue;
       int dayIndex = _matchWeekday(lessons[0]);
       if (dayIndex == -1) {
-        _showError('Invalid timetable format');
+        _showError('并非是有效的课表');
         return;
       }
       for (int i = 1; i < lessons.length; i++) {
@@ -122,7 +127,7 @@ class PageState extends State<TimetablePage> {
           int end = int.parse(match.group(2)!);
           String name = match.group(3)!;
           if (start > end || start <= 0 || end > 14) {
-            _showError('Invalid timetable format');
+            _showError('并非是有效的课表');
             return;
           }
           for (int j = start - 1; j < end; j++) {
@@ -171,7 +176,7 @@ class PageState extends State<TimetablePage> {
     );
     if (response.statusCode != 200) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to submit timetable')),
+        SnackBar(content: Text('并非提交成功')),
       );
     }
   }
@@ -207,12 +212,58 @@ class PageState extends State<TimetablePage> {
     }
   }
 
+  void _editTimetable() {
+    TextEditingController _editController = TextEditingController();
+    _editController.text = _serializeTimetable();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("编辑课表"),
+          content: TextField(
+            controller: _editController,
+            maxLines: 20,
+            minLines: 1,
+            decoration: InputDecoration(
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text("取消"),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text("确定"),
+              onPressed: () {
+                String editedText = _editController.text;
+                try {
+                  _importTimetable(editedText);
+                  Navigator.of(context).pop();
+                } catch (e) {
+                  _showError('并非是有效的课表');
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('我的课程表'),
         actions: [
+          IconButton(
+            icon: Icon(Icons.edit),
+            onPressed: _editTimetable,
+          ),
           IconButton(
             icon: Icon(Icons.content_paste),
             onPressed: _importFromClipboard,
@@ -283,8 +334,8 @@ class PageState extends State<TimetablePage> {
                       shrinkWrap: true,
                       itemCount: 14,
                       gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 1, childAspectRatio: 1 / 2),
+                          SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 1, childAspectRatio: tileRatio),
                       itemBuilder: (BuildContext context, int index) {
                         return Container(
                           decoration: const BoxDecoration(
@@ -321,9 +372,9 @@ class PageState extends State<TimetablePage> {
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: 14 * 7,
                       gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
+                          SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 7,
-                        childAspectRatio: 1 / 2,
+                        childAspectRatio: tileRatio,
                       ),
                       itemBuilder: (BuildContext context, int index) {
                         int day = index % 7;
@@ -332,16 +383,16 @@ class PageState extends State<TimetablePage> {
                         // Skip the cell if it is part of a merged cell
                         if (_isMerged[day][time]) {
                           int time1 = time - 1;
-                          while(_isMerged[day][time1]){
+                          while (_isMerged[day][time1]) {
                             time1--;
                           }
                           return Container(
                               decoration: BoxDecoration(
-                                color: colorList[(day+time1*5) % colorList.length],
-                                border:
+                            color:
+                                colorList[(day + time1 * 5) % colorList.length],
+                            border:
                                 Border.all(color: Colors.black12, width: 0.5),
-                              )
-                          );
+                          ));
                         }
 
                         // Determine the span of the current cell
@@ -357,7 +408,8 @@ class PageState extends State<TimetablePage> {
                             decoration: BoxDecoration(
                               color: _timetable[day][time].isEmpty
                                   ? Colors.white
-                                  : colorList[(day+time*5) % colorList.length],
+                                  : colorList[
+                                      (day + time * 5) % colorList.length],
                               border:
                                   Border.all(color: Colors.black12, width: 0.5),
                             ),
@@ -374,6 +426,7 @@ class PageState extends State<TimetablePage> {
                                 controller: TextEditingController(
                                   text: _timetable[day][time],
                                 ),
+                                style: TextStyle(fontSize: fontSize),
                                 onChanged: (value) {
                                   setState(() {
                                     _timetable[day][time] = value;

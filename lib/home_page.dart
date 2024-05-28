@@ -169,7 +169,10 @@ class _HomePageState extends State<HomePage> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8), // 矩形按钮
                   ),
-                  textStyle: const TextStyle(fontSize: 20), // 更大字体
+                  textStyle: const TextStyle(
+                      fontSize: 20,
+                      fontFamily: 'SourceHanSans'
+                  ), // 更大字体
                 ),
                 child: const Text('今天吃什么？'),
               ),

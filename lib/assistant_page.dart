@@ -89,6 +89,36 @@ class _AssistantPageState extends State<AssistantPage> with AutomaticKeepAliveCl
 
   Future<void> _fetchResponse(String query) async {
     try {
+      // Check if this is the first message
+      bool isFirstMessage = widget.chatHistory.length == 1;
+
+      String prompt = query;
+      if (isFirstMessage) {
+        prompt = (
+            "你是一名经验丰富的心理咨询师。"
+                "用户是一名南京师范大学的本科学生，最近遇到了一些心理困扰。"
+                "用户描述了以下情况：'$query'"
+                "\n\n"
+                "请为用户提供一个详细的心理咨询方案，内容包括："
+                "\n"
+                "1. 理解用户的情绪和感受"
+                "\n"
+                "2. 提供具体的应对策略和技巧"
+                "\n"
+                "3. 生活方式调整建议"
+                "\n"
+                "4. 寻找问题的根源并解决"
+                "\n"
+                "5. 寻求支持和资源"
+                "\n"
+                "6. 建立积极的思维模式"
+                "\n"
+                "7. 持续的自我照顾"
+                "\n"
+                "最后，提供一些有用的资源，如推荐的书籍、在线课程或手机应用。"
+        );
+      }
+
       final response = await _client!.post(
         Uri.parse('https://api.openai.com/v1/chat/completions'),
         headers: {
@@ -98,9 +128,13 @@ class _AssistantPageState extends State<AssistantPage> with AutomaticKeepAliveCl
         },
         body: utf8.encode(json.encode({
           'model': 'gpt-3.5-turbo',
-          'messages': widget.chatHistory,
+          'messages': [
+            {'role': 'user', 'content': prompt},
+          ],
+          'temperature': 0.7,
+          'max_tokens': 1000,
         })),
-      ).timeout(const Duration(seconds: 10)); // 增加超时时间
+      ).timeout(const Duration(seconds: 30)); // 增加超时时间
 
       if (response.statusCode == 200) {
         final responseData = json.decode(utf8.decode(response.bodyBytes));
@@ -129,7 +163,7 @@ class _AssistantPageState extends State<AssistantPage> with AutomaticKeepAliveCl
     super.build(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Assistant'),
+        title: const Text('助手'),
       ),
       body: Column(
         children: [

@@ -38,6 +38,7 @@ dependencies:
   http: ^0.13.5
   flutter_local_notifications: ^17.1.2
   flutter_openai: ^0.5.1
+  local_notifier: ^0.1.6
 
 dev_dependencies:
   flutter_test:
@@ -89,5 +90,9 @@ flutter:
   #       - asset: fonts/TrajanPro_Bold.ttf
   #         weight: 700
   #
+  fonts:
+    - family: SourceHanSans
+      fonts:
+        - asset: fonts/SourceHanSansCN-Regular.otf
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages

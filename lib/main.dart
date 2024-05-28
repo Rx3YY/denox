@@ -1,22 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:local_notifier/local_notifier.dart';
 import 'home_page.dart';
 import 'assistant_page.dart';
 import 'timetable_page.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
+import 'dart:io';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-  FlutterLocalNotificationsPlugin();
+    FlutterLocalNotificationsPlugin();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   const AndroidInitializationSettings initializationSettingsAndroid =
-  AndroidInitializationSettings('app_icon');
+      AndroidInitializationSettings('@mipmap/ic_launcher');
   final InitializationSettings initializationSettings =
-  InitializationSettings(android: initializationSettingsAndroid);
+      InitializationSettings(android: initializationSettingsAndroid);
   await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+  await localNotifier.setup(
+    appName: '梦启时',
+    // 仅 Windows
+    shortcutPolicy: ShortcutPolicy.requireCreate,
+  );
+
   runApp(MyApp());
 }
 
@@ -27,6 +36,7 @@ class MyApp extends StatelessWidget {
       title: '梦启时',
       theme: ThemeData(
         primarySwatch: Colors.blue,
+        fontFamily: "SourceHanSans"
       ),
       home: MainPage(),
     );
@@ -41,18 +51,23 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   final List<ChatMessage> messages = [];
   final List<Map<String, String>> chatHistory = [];
-  final TextEditingController proxyController = TextEditingController(text: '127.0.0.1:10809');
-  final TextEditingController backendIpController = TextEditingController(text: '10.122.227.179');
+  final TextEditingController proxyController = TextEditingController(
+      text: Platform.isWindows ? '127.0.0.1:10809' : '10.122.237.203:10811');
+  final TextEditingController backendIpController =
+      TextEditingController(text: '10.122.227.179');
 
   int _selectedIndex = 0;
   late List<Widget> _widgetOptions = <Widget>[
     HomePage(backendIpController: backendIpController),
-    AssistantPage(messages: messages, chatHistory: chatHistory, proxyController: proxyController),
+    AssistantPage(
+        messages: messages,
+        chatHistory: chatHistory,
+        proxyController: proxyController),
     TimetablePage(backendIpController: backendIpController),
   ];
 
   @override
-  void initState(){
+  void initState() {
     super.initState();
     Timer.periodic(const Duration(seconds: 5), (timer) {
       _checkForReminders();
@@ -84,8 +99,10 @@ class _MainPageState extends State<MainPage> {
   }
 
   void _showSettingsDialog() {
-    final TextEditingController startTimeController = TextEditingController(text: '00:00:00');
-    final TextEditingController endTimeController = TextEditingController(text: '01:00:00');
+    final TextEditingController startTimeController =
+        TextEditingController(text: '00:00:00');
+    final TextEditingController endTimeController =
+        TextEditingController(text: '01:00:00');
 
     showDialog(
       context: context,
@@ -110,13 +127,13 @@ class _MainPageState extends State<MainPage> {
               TextField(
                 controller: startTimeController,
                 decoration: InputDecoration(
-                  labelText: '提醒开始时间 (HH:mm:ss)',
+                  labelText: '提醒时间 - 有早八 (HH:mm:ss)',
                 ),
               ),
               TextField(
                 controller: endTimeController,
                 decoration: InputDecoration(
-                  labelText: '提醒结束时间 (HH:mm:ss)',
+                  labelText: '提醒时间 - 无早八 (HH:mm:ss)',
                 ),
               ),
             ],
@@ -131,7 +148,8 @@ class _MainPageState extends State<MainPage> {
             TextButton(
               child: Text('确定'),
               onPressed: () {
-                _updateReminderTime(startTimeController.text, endTimeController.text);
+                _updateReminderTime(
+                    startTimeController.text, endTimeController.text);
                 Navigator.of(context).pop();
               },
             ),
@@ -142,17 +160,20 @@ class _MainPageState extends State<MainPage> {
   }
 
   Future<void> _checkForReminders() async {
-    final response = await http.get(Uri.parse('http://${backendIpController.text}:8000/remind'));
+    // test only
+    //await _showReminderDialog('111');
+    final response = await http
+        .get(Uri.parse('http://${backendIpController.text}:8000/remind'));
     // final response = await http.get(Uri.parse('http://10.122.227.179:8000/remind'));
     if (response.statusCode == 200) {
       String reminder = json.decode(response.body)['reminder'];
       if (reminder.isNotEmpty) {
-        _showReminderDialog(reminder);
+        await _showReminderDialog(reminder);
       }
     }
   }
 
-  void _showReminderDialog(String reminder) {
+  Future<void> _showReminderDialog(String reminder) async {
     showDialog(
       context: context,
       builder: (context) {
@@ -178,8 +199,8 @@ class _MainPageState extends State<MainPage> {
         );
       },
     );
+    await _showNotificationAllPlatform(reminder);
   }
-
 
   Future<void> _postReminderChoice(String choice) async {
     final response = await http.post(
@@ -194,6 +215,29 @@ class _MainPageState extends State<MainPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to log choice')),
       );
+    }
+  }
+
+  Future<void> _showNotificationAllPlatform(String str) async {
+    if(Platform.isAndroid) {
+      const android_details = AndroidNotificationDetails(
+          'channelId', 'channelName',
+          channelDescription: 'channelDescription',
+          importance: Importance.max,
+          priority: Priority.high,
+          ticker: 'ticker');
+      const platformspec = NotificationDetails(android: android_details);
+      await flutterLocalNotificationsPlugin.show(
+          1767, "梦启时提醒", str, platformspec);
+    }
+    else if(Platform.isWindows){
+      final notification = LocalNotification(
+        identifier: '12345',
+        title: '梦启时提醒',
+        body: str,
+        silent: false,
+      );
+      notification.show();
     }
   }
 
