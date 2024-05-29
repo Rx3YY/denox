@@ -1,7 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
-        android:label="denox"
-        android:icon="@mipmap/ic_launcher">
+        android:label="梦启时"
+        android:icon="@mipmap/mqs">
         <activity
             android:name=".MainActivity"
             android:exported="true"

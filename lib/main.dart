@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:local_notifier/local_notifier.dart';
+import 'package:intl/intl.dart';
 import 'home_page.dart';
 import 'assistant_page.dart';
 import 'timetable_page.dart';
@@ -10,19 +11,19 @@ import 'dart:async';
 import 'dart:io';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
+FlutterLocalNotificationsPlugin();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   const AndroidInitializationSettings initializationSettingsAndroid =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
+  AndroidInitializationSettings('@mipmap/ic_launcher');
   final InitializationSettings initializationSettings =
-      InitializationSettings(android: initializationSettingsAndroid);
+  InitializationSettings(android: initializationSettingsAndroid);
   await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
   await localNotifier.setup(
     appName: '梦启时',
-    // 仅 Windows
+    // Only for Windows
     shortcutPolicy: ShortcutPolicy.requireCreate,
   );
 
@@ -35,8 +36,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: '梦启时',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        fontFamily: "SourceHanSans"
+          primarySwatch: Colors.blue,
+          fontFamily: "SourceHanSans"
       ),
       home: MainPage(),
     );
@@ -54,7 +55,10 @@ class _MainPageState extends State<MainPage> {
   final TextEditingController proxyController = TextEditingController(
       text: Platform.isWindows ? '127.0.0.1:10809' : '10.122.237.203:10811');
   final TextEditingController backendIpController =
-      TextEditingController(text: '10.122.227.179');
+  TextEditingController(text: '10.122.227.179');
+
+  bool _toughMode = false;  // Added tough mode variable
+  bool _enteredOnce = false; // Used to track if it's the second time entering the reminder dialog
 
   int _selectedIndex = 0;
   late List<Widget> _widgetOptions = <Widget>[
@@ -98,62 +102,80 @@ class _MainPageState extends State<MainPage> {
     }
   }
 
+
   void _showSettingsDialog() {
     final TextEditingController startTimeController =
-        TextEditingController(text: '00:00:00');
+    TextEditingController(text: '00:00:00');
     final TextEditingController endTimeController =
-        TextEditingController(text: '01:00:00');
+    TextEditingController(text: '02:45:00');
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('设置'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              TextField(
-                controller: proxyController,
-                decoration: InputDecoration(
-                  labelText: 'HTTP代理配置(ip:port)',
-                ),
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('设置'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  TextField(
+                    controller: proxyController,
+                    decoration: InputDecoration(
+                      labelText: 'HTTP代理配置(ip:port)',
+                    ),
+                  ),
+                  TextField(
+                    controller: backendIpController,
+                    decoration: InputDecoration(
+                      labelText: '后端IP地址',
+                    ),
+                  ),
+                  TextField(
+                    controller: startTimeController,
+                    decoration: InputDecoration(
+                      labelText: '提醒时间 - 有早八 (HH:mm:ss)',
+                    ),
+                  ),
+                  TextField(
+                    controller: endTimeController,
+                    decoration: InputDecoration(
+                      labelText: '提醒时间 - 无早八 (HH:mm:ss)',
+                    ),
+                  ),
+                  if (Platform.isWindows)
+                    Tooltip(
+                      message: '第二次触发提醒时将强制退出游戏',
+                      child: CheckboxListTile(
+                        title: Text("狠人模式"),
+                        value: _toughMode,
+                        onChanged: (bool? value) {
+                          setState(() {
+                            _toughMode = value ?? false;
+                          });
+                        },
+                      ),
+                    ),
+                ],
               ),
-              TextField(
-                controller: backendIpController,
-                decoration: InputDecoration(
-                  labelText: '后端IP地址',
+              actions: <Widget>[
+                TextButton(
+                  child: Text('取消'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
                 ),
-              ),
-              TextField(
-                controller: startTimeController,
-                decoration: InputDecoration(
-                  labelText: '提醒时间 - 有早八 (HH:mm:ss)',
+                TextButton(
+                  child: Text('确定'),
+                  onPressed: () {
+                    _updateReminderTime(
+                        startTimeController.text, endTimeController.text);
+                    Navigator.of(context).pop();
+                  },
                 ),
-              ),
-              TextField(
-                controller: endTimeController,
-                decoration: InputDecoration(
-                  labelText: '提醒时间 - 无早八 (HH:mm:ss)',
-                ),
-              ),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('取消'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: Text('确定'),
-              onPressed: () {
-                _updateReminderTime(
-                    startTimeController.text, endTimeController.text);
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
+              ],
+            );
+          },
         );
       },
     );
@@ -161,9 +183,18 @@ class _MainPageState extends State<MainPage> {
 
   Future<void> _checkForReminders() async {
     // test only
+    // 获取当前时间
+    // final now = DateTime.now();
+    // final formattedTime = DateFormat('HH:mm').format(now);
+    //
+    // // 判断时间是否大于02:40
+    // if (formattedTime.compareTo('02:55') > 0) {
+    //   await _showReminderDialog('Reminder: 该睡觉了！现在是: 02:55。');
+    // }
+    // return;
     //await _showReminderDialog('111');
     final response = await http
-        .get(Uri.parse('http://${backendIpController.text}:8000/remind'));
+        .get(Uri.parse('http://${backendIpController.text}:5000/remind'));
     // final response = await http.get(Uri.parse('http://10.122.227.179:8000/remind'));
     if (response.statusCode == 200) {
       String reminder = json.decode(response.body)['reminder'];
@@ -174,11 +205,19 @@ class _MainPageState extends State<MainPage> {
   }
 
   Future<void> _showReminderDialog(String reminder) async {
+    // Check if it's the second time entering the dialog and tough mode is enabled
+    if (_enteredOnce && _toughMode && Platform.isWindows) {
+      await Process.run('taskkill', ['/f', '/im', 'Overwatch.exe']);
+    }
+
+    await _showNotificationAllPlatform(reminder);
+    _enteredOnce = true;
+
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Reminder'),
+          title: const Text('时间到啦'),
           content: Text(reminder),
           actions: [
             TextButton(
@@ -199,12 +238,11 @@ class _MainPageState extends State<MainPage> {
         );
       },
     );
-    await _showNotificationAllPlatform(reminder);
   }
 
   Future<void> _postReminderChoice(String choice) async {
     final response = await http.post(
-      Uri.parse('http://${backendIpController.text}:8000/log_choice'),
+      Uri.parse('http://${backendIpController.text}:5000/log_choice'),
       headers: {'Content-Type': 'application/json'},
       body: json.encode({
         'reminder_time': DateTime.now().toIso8601String(),
@@ -220,13 +258,13 @@ class _MainPageState extends State<MainPage> {
 
   Future<void> _showNotificationAllPlatform(String str) async {
     if(Platform.isAndroid) {
-      const android_details = AndroidNotificationDetails(
-          'channelId', 'channelName',
-          channelDescription: 'channelDescription',
+      final android_details = AndroidNotificationDetails(
+          'mqs', '梦启时',
+          channelDescription: '梦启时提醒',
           importance: Importance.max,
           priority: Priority.high,
           ticker: 'ticker');
-      const platformspec = NotificationDetails(android: android_details);
+      final platformspec = NotificationDetails(android: android_details);
       await flutterLocalNotificationsPlugin.show(
           1767, "梦启时提醒", str, platformspec);
     }

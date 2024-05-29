@@ -101,7 +101,7 @@ class PageState extends State<TimetablePage> {
     if (response.statusCode == 200) {
       _importTimetable(json.decode(response.body)['data']);
     } else {
-      _showError('Failed to load timetable');
+      _showError('加载课表失败${response.statusCode}');
     }
   }
 

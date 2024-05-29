@@ -94,30 +94,48 @@ class _AssistantPageState extends State<AssistantPage> with AutomaticKeepAliveCl
 
       String prompt = query;
       if (isFirstMessage) {
-        prompt = (
-            "你是一名经验丰富的心理咨询师。"
-                "用户是一名北京邮电大学的本科学生，最近遇到了一些心理困扰。"
-                "用户描述了以下情况：'$query'"
-                "\n\n"
-                "请为用户提供一个简短的心理咨询方案，内容包括："
-                "\n"
-                "1. 理解用户的情绪"
-                "\n"
-                "2. 提供应对策略"
-                "\n"
-                "3. 生活方式建议"
-                "\n"
-                "4. 寻求支持的建议"
-                "\n"
-                "最后，推荐一些有用的资源。"
-        );
+        prompt = "你是一名经验丰富的心理咨询师，拥有多年处理各种心理问题的专业背景。"
+            "用户是一名南京师范大学的本科学生，最近遇到了一些心理困扰。"
+            "用户描述了以下情况：'$query'"
+            "\n\n"
+            "请为用户提供一个详细的心理咨询方案，内容包括但不限于："
+            "\n\n"
+            "1. **理解用户的情绪和感受**："
+            " - 向用户解释他们的情绪和感受是正常的，并不是他们的错。"
+            " - 帮助用户认识到，接受自己的情绪是管理和缓解困扰的第一步。"
+            "\n\n"
+            "2. **提供具体的应对策略和技巧**："
+            " - 针对用户描述的问题，提供具体的应对策略和技巧。"
+            " - 可以包括深呼吸、放松练习、时间管理技巧等。"
+            "\n\n"
+            "3. **生活方式调整建议**："
+            " - 强调保持健康的生活方式对心理健康的重要性。"
+            " - 提供具体的建议，例如保持规律的作息时间、健康饮食和适度运动。"
+            "\n\n"
+            "4. **寻找问题的根源并解决**："
+            " - 引导用户回顾并识别引发困扰的具体原因。"
+            " - 提供解决问题的策略，例如逐步解决问题的方法或寻求他人的帮助。"
+            "\n\n"
+            "5. **寻求支持和资源**："
+            " - 鼓励用户与家人、朋友或同学分享他们的感受，以获得情感上的支持。"
+            " - 建议用户考虑参加支持小组或寻求专业心理咨询师的帮助。"
+            "\n\n"
+            "6. **建立积极的思维模式**："
+            " - 教授用户一些积极思考的方法，帮助他们应对负面情绪和想法。"
+            " - 提供练习，如每日记录积极事件或练习感恩日记。"
+            "\n\n"
+            "7. **持续的自我照顾**："
+            " - 提醒用户定期检查自己的心理状态，并及时采取行动管理压力。"
+            " - 强调长期坚持健康的生活习惯和应对策略的重要性。"
+            "\n\n"
+            "最后，提供一些有用的资源，例如推荐的书籍、在线课程或手机应用，以帮助用户进一步学习和提升心理健康。";
       }
 
       final response = await _client!.post(
         Uri.parse('https://api.openai.com/v1/chat/completions'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer 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',
+          'Authorization': 'Bearer YOUR_API_KEY_HERE',
           'Accept-Charset': 'utf-8',
         },
         body: utf8.encode(json.encode({
@@ -125,10 +143,8 @@ class _AssistantPageState extends State<AssistantPage> with AutomaticKeepAliveCl
           'messages': [
             {'role': 'user', 'content': prompt},
           ],
-          'temperature': 0.7,
-          'max_tokens': 1000,
         })),
-      ).timeout(const Duration(seconds: 120)); // 增加超时时间
+      ).timeout(const Duration(seconds: 10)); // 增加超时时间
 
       if (response.statusCode == 200) {
         final responseData = json.decode(utf8.decode(response.bodyBytes));
